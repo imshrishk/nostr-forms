@@ -14,4 +14,5 @@ export const ROUTES = {
   RESPONSES_SECRET: "/s/:secretKey/:formId",
   DRAFT: "/drafts/:encodedForm",
   EMBEDDED: "/embedded/:formId",
+  AI_ASSISTANT: "/ai-assistant",
 };

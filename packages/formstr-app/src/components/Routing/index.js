@@ -12,6 +12,7 @@ import { V1DraftsController } from "../../containers/Drafts";
 import CreateForm from "../../containers/CreateFormNew";
 import { Dashboard } from "../../containers/Dashboard";
 import EditForm from "../../containers/EditForm";
+import AIFormAssistant from "../AIFormAssistant";
 
 const withNostrHeaderWrapper = (Component, props) => {
   return (
@@ -22,14 +23,12 @@ const withNostrHeaderWrapper = (Component, props) => {
   );
 };
 
-const withNewCreateFormHeaderWrapper = (Component, props) => {
+const withNewCreateFormHeaderWrapper = (Component) => {
   return (
-    <>
-      <NewFormBuilderProvider>
-        <CreateFormHeaderNew />
-        <Component {...props} />
-      </NewFormBuilderProvider>
-    </>
+    <NewFormBuilderProvider>
+      <CreateFormHeaderNew />
+      <Component />
+    </NewFormBuilderProvider>
   );
 };
 
@@ -79,6 +78,10 @@ function Routing() {
       <Route
         path={`${ROUTES.DASHBOARD}/*`}
         element={withNostrHeaderWrapper(Dashboard)}
+      />
+      <Route
+        path={`${ROUTES.AI_ASSISTANT}/*`}
+        element={<AIFormAssistant />}
       />
     </Routes>
   );

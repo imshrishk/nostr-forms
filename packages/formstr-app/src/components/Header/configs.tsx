@@ -4,6 +4,7 @@ import {
   SearchOutlined,
   PlusOutlined,
   InfoCircleOutlined,
+  RobotOutlined,
 } from "@ant-design/icons";
 import { ROUTES } from "../../constants/routes";
 
@@ -12,6 +13,7 @@ export const HEADER_MENU_KEYS = {
   USER: "USER",
   CREATE_FORMS: "CREATE_FORMS",
   HELP: "HELP",
+  AI_ASSISTANT: "AI_ASSISTANT",
 };
 
 export const HEADER_MENU = [
@@ -26,6 +28,16 @@ export const HEADER_MENU = [
     icon: (
       <Link to={ROUTES.PUBLIC_FORMS}>
         <SearchOutlined />
+      </Link>
+    ),
+  },
+  {
+    key: HEADER_MENU_KEYS.AI_ASSISTANT,
+    label: (
+      <Link to={ROUTES.AI_ASSISTANT}>
+        <Button type="primary" icon={<RobotOutlined />}>
+          AI Assistant
+        </Button>
       </Link>
     ),
   },

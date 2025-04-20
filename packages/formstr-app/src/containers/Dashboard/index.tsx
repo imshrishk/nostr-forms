@@ -10,8 +10,8 @@ import EmptyScreen from "../../components/EmptyScreen";
 import { useApplicationContext } from "../../hooks/useApplicationContext";
 import { getItem, LOCAL_STORAGE_KEYS } from "../../utils/localStorage";
 import { ILocalForm } from "../CreateFormNew/providers/FormBuilder/typeDefs";
-import { Dropdown, Menu, Typography, Button } from "antd";
-import { DownOutlined } from "@ant-design/icons";
+import { Dropdown, Menu, Typography, Button, Card, Space } from "antd";
+import { DownOutlined, RobotOutlined, PlusOutlined } from "@ant-design/icons";
 import { MyForms } from "./FormCards/MyForms";
 import { Drafts } from "./FormCards/Drafts";
 import { LocalForms } from "./FormCards/LocalForms";
@@ -92,24 +92,95 @@ export const Dashboard = () => {
     navigate(ROUTES.CREATE_FORMS_NEW, { state: navigationState });
   };
 
+  const handleCreateFormWithAI = () => {
+    navigate(ROUTES.CREATE_FORMS_NEW);
+    sessionStorage.setItem('openAIAssistant', 'true');
+  };
+
   const renderForms = () => {
     if (filter === "local") {
       if (localForms.length == 0){ 
         return (
-          <EmptyScreen
-            templates={availableTemplates}
-            onTemplateClick={handleTemplateClick}
-            message="No forms found on this device. Start by choosing a template:"
-          />
+          <>
+            <Card 
+              style={{ 
+                width: '100%', 
+                marginBottom: '20px',
+                background: 'linear-gradient(135deg, #ff5733 0%, #ff8c33 100%)',
+                color: 'white'
+              }}
+            >
+              <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                <Typography.Title level={4} style={{ color: 'white', margin: 0 }}>
+                  <RobotOutlined /> Create Forms with AI
+                </Typography.Title>
+                <Typography.Paragraph style={{ color: 'white' }}>
+                  Describe your form in natural language and let AI create it for you.
+                  Get started in seconds with AI-powered form creation.
+                </Typography.Paragraph>
+                <Button 
+                  type="primary" 
+                  icon={<RobotOutlined />}
+                  onClick={handleCreateFormWithAI}
+                  style={{ 
+                    background: 'white', 
+                    color: '#ff5733',
+                    borderColor: 'white'
+                  }}
+                >
+                  Create Form with AI
+                </Button>
+              </Space>
+            </Card>
+            
+            <EmptyScreen
+              templates={availableTemplates}
+              onTemplateClick={handleTemplateClick}
+              message="No forms found on this device. Start by choosing a template:"
+            />
+          </>
         );
       }
       return (
-        <LocalForms
-          localForms={localForms}
-          onDeleted={(localForm: ILocalForm) =>
-            setLocalForms(localForms.filter((f) => f.key !== localForm.key))
-          }
-        />
+        <>
+          <Card 
+            style={{ 
+              width: '100%', 
+              marginBottom: '20px',
+              background: 'linear-gradient(135deg, #ff5733 0%, #ff8c33 100%)',
+              color: 'white'
+            }}
+          >
+            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+              <Typography.Title level={4} style={{ color: 'white', margin: 0 }}>
+                <RobotOutlined /> Create Forms with AI
+              </Typography.Title>
+              <Typography.Paragraph style={{ color: 'white' }}>
+                Describe your form in natural language and let AI create it for you.
+                Get started in seconds with AI-powered form creation.
+              </Typography.Paragraph>
+              <Button 
+                type="primary" 
+                icon={<RobotOutlined />}
+                onClick={handleCreateFormWithAI}
+                style={{ 
+                  background: 'white', 
+                  color: '#ff5733',
+                  borderColor: 'white'
+                }}
+              >
+                Create Form with AI
+              </Button>
+            </Space>
+          </Card>
+          
+          <LocalForms
+            localForms={localForms}
+            onDeleted={(localForm: ILocalForm) =>
+              setLocalForms(localForms.filter((f) => f.key !== localForm.key))
+            }
+          />
+        </>
       );
     } else if (filter === "shared") {
       if (nostrForms.size == 0){
@@ -164,7 +235,7 @@ export const Dashboard = () => {
   return (
     <DashboardStyleWrapper>
       <div className="dashboard-container">
-      <div className="filter-dropdown-container">
+        <div className="filter-dropdown-container">
           <Dropdown overlay={menu} trigger={["click"]} placement="bottomLeft" overlayClassName="dashboard-filter-menu"
 >
             <Button>
@@ -174,6 +245,15 @@ export const Dashboard = () => {
               />
             </Button>
           </Dropdown>
+          
+          <Button 
+            type="primary" 
+            icon={<PlusOutlined />} 
+            onClick={() => navigate(ROUTES.CREATE_FORMS_NEW)}
+            style={{ marginLeft: '10px' }}
+          >
+            Create Form
+          </Button>
         </div>
         <div className="form-cards-container">{renderForms()}</div>
         <TemplateSelectorModal

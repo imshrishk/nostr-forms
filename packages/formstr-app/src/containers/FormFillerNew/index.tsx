@@ -25,6 +25,7 @@ import { AddressPointer } from "nostr-tools/nip19";
 import { LoadingOutlined } from "@ant-design/icons";
 import { sendNotification } from "../../nostr/common";
 import { sendResponses } from "../../nostr/common";
+import AIFormFiller from "./AIFormFiller";
 
 const { Text } = Typography;
 
@@ -109,6 +110,12 @@ export const FormFiller: React.FC<FormFillerProps> = ({
       return;
     }
     form.setFieldValue(questionId, [answer, message]);
+  };
+
+  const handleAIResponsesGenerated = (responses: Record<string, [string, string | undefined]>) => {
+    Object.entries(responses).forEach(([fieldId, [answer, message]]) => {
+      form.setFieldValue(fieldId, [answer, message]);
+    });
   };
 
   const getResponseRelays = (formEvent: Event) => {
@@ -267,6 +274,13 @@ export const FormFiller: React.FC<FormFillerProps> = ({
                 <>{renderSubmitButton(settings)}</>
               </div>
             </Form>
+            
+            {!isPreview && fields.length > 0 && (
+              <AIFormFiller 
+                fields={fields} 
+                onResponsesGenerated={handleAIResponsesGenerated} 
+              />
+            )}
           </div>
           <div className="branding-container">
             <Link to="/">
@@ -287,8 +301,7 @@ export const FormFiller: React.FC<FormFillerProps> = ({
         {embedded ? (
           formSubmitted && (
             <div className="embed-submitted">
-              {" "}
-              <Text>Response Submitted</Text>{" "}
+              <Text>Response Submitted</Text>
             </div>
           )
         ) : (
@@ -303,4 +316,5 @@ export const FormFiller: React.FC<FormFillerProps> = ({
       </FillerStyle>
     );
   }
+  return null;
 };
