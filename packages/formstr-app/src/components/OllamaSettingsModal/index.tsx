@@ -1,22 +1,10 @@
+// packages/formstr-app/src/components/OllamaSettingsModal/index.tsx
 import React, { useState, useEffect } from 'react';
-import { Modal, Input, Button, Select, Alert, Typography, Space, Spin } from 'antd';
+import { Modal, Form, Input, Button, Select, Typography, Alert, Space } from 'antd';
 import { useOllama } from '../../providers/OllamaProvider';
-import styled from 'styled-components';
 
-const { Title, Text } = Typography;
+const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
-
-const SettingsContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-`;
-
-const InputGroup = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-`;
 
 interface OllamaSettingsModalProps {
   visible: boolean;
@@ -24,116 +12,140 @@ interface OllamaSettingsModalProps {
 }
 
 const OllamaSettingsModal: React.FC<OllamaSettingsModalProps> = ({ visible, onClose }) => {
-  const {
-    isConnected,
-    isLoading,
-    error,
-    baseUrl,
-    models,
-    selectedModel,
-    connect,
-    disconnect,
-    setSelectedModel,
-    fetchModels,
+  const { 
+    baseUrl, 
+    setBaseUrl, 
+    model, 
+    setModel, 
+    availableModels, 
+    fetchModels, 
+    testConnection,
+    connectionStatus,
+    isLoading
   } = useOllama();
-
-  const [url, setUrl] = useState(baseUrl);
+  
+  const [form] = Form.useForm();
   const [testingConnection, setTestingConnection] = useState(false);
-
+  
   useEffect(() => {
-    if (visible && isConnected) {
-      fetchModels();
+    if (visible) {
+      form.setFieldsValue({
+        baseUrl,
+        model,
+      });
     }
-  }, [visible, isConnected]);
+  }, [visible, baseUrl, model, form]);
 
-  const handleConnect = async () => {
-    await connect(url);
+  const handleOk = () => {
+    form.validateFields().then((values) => {
+      setBaseUrl(values.baseUrl);
+      setModel(values.model);
+      onClose();
+    });
   };
 
-  const handleDisconnect = () => {
-    disconnect();
+  const handleTestConnection = async () => {
+    const url = form.getFieldValue('baseUrl');
+    setTestingConnection(true);
+    await testConnection(url);
+    setTestingConnection(false);
   };
 
-  const handleModelChange = (model: string) => {
-    setSelectedModel(model);
-  };
-
-  const handleClose = () => {
-    onClose();
+  const handleFetchModels = async () => {
+    const url = form.getFieldValue('baseUrl');
+    await fetchModels(url);
   };
 
   return (
     <Modal
-      title={<Title level={4}>Ollama Settings</Title>}
+      title="Ollama Settings"
       open={visible}
-      onCancel={handleClose}
-      footer={null}
+      onCancel={onClose}
+      footer={[
+        <Button key="test" onClick={handleTestConnection} loading={testingConnection}>
+          Test Connection
+        </Button>,
+        <Button key="cancel" onClick={onClose}>
+          Cancel
+        </Button>,
+        <Button key="submit" type="primary" onClick={handleOk}>
+          Save
+        </Button>,
+      ]}
       width={600}
     >
-      <SettingsContainer>
-        {error && <Alert message={error} type="error" showIcon />}
-        
-        <InputGroup>
-          <Text strong>Ollama API URL</Text>
-          <Space>
-            <Input
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="http://localhost:11434"
-              disabled={isConnected || isLoading}
-              style={{ width: 300 }}
-            />
-            {isConnected ? (
-              <Button onClick={handleDisconnect} danger>
-                Disconnect
-              </Button>
-            ) : (
-              <Button 
-                type="primary" 
-                onClick={handleConnect} 
-                loading={isLoading}
-              >
-                Connect
-              </Button>
-            )}
+      <Space direction="vertical" style={{ width: '100%' }}>
+        <Title level={5}>Configure Your Ollama Instance</Title>
+        <Paragraph>
+          Formstr can connect to your self-hosted Ollama instance to provide AI-powered
+          features for form creation and responses.
+        </Paragraph>
+
+        {connectionStatus === 'success' && (
+          <Alert
+            message="Connection Successful"
+            description="Your Ollama instance is connected and ready to use."
+            type="success"
+            showIcon
+          />
+        )}
+
+        {connectionStatus === 'error' && (
+          <Alert
+            message="Connection Failed"
+            description="Could not connect to your Ollama instance. Please check the URL and ensure Ollama is running."
+            type="error"
+            showIcon
+          />
+        )}
+
+        <Form
+          form={form}
+          layout="vertical"
+          initialValues={{
+            baseUrl,
+            model,
+          }}
+        >
+          <Form.Item
+            label="Ollama Server URL"
+            name="baseUrl"
+            rules={[{ required: true, message: 'Please enter your Ollama server URL' }]}
+            extra="The base URL of your Ollama instance, e.g., http://localhost:11434"
+          >
+            <Input placeholder="http://localhost:11434" />
+          </Form.Item>
+
+          <Space style={{ marginBottom: 16 }}>
+            <Button onClick={handleFetchModels} loading={isLoading}>
+              Fetch Available Models
+            </Button>
           </Space>
-          <Text type="secondary">
-            Enter the URL where your Ollama instance is running
-          </Text>
-        </InputGroup>
-        
-        {isConnected && (
-          <InputGroup>
-            <Text strong>Select Model</Text>
+
+          <Form.Item
+            label="Model"
+            name="model"
+            rules={[{ required: true, message: 'Please select a model' }]}
+          >
             <Select
-              value={selectedModel}
-              onChange={handleModelChange}
-              style={{ width: 300 }}
+              placeholder="Select a model"
               loading={isLoading}
+              disabled={availableModels.length === 0}
             >
-              {models.map(model => (
-                <Option key={model} value={model}>{model}</Option>
+              {availableModels.map((modelName) => (
+                <Option key={modelName} value={modelName}>
+                  {modelName}
+                </Option>
               ))}
             </Select>
-            <Text type="secondary">
-              Choose the AI model to use for form generation and filling
-            </Text>
-            <Button 
-              onClick={fetchModels} 
-              type="link" 
-              style={{ width: 150 }}
-            >
-              Refresh Models
-            </Button>
-          </InputGroup>
-        )}
-        
-        <div style={{ marginTop: 20 }}>
-          <Button type="primary" onClick={handleClose}>
-            Done
-          </Button>
-        </div>
-      </SettingsContainer>
+          </Form.Item>
+        </Form>
+
+        <Paragraph type="secondary">
+          Note: To use Ollama, you must have it installed and running on your server or local machine.
+          Visit <a href="https://ollama.ai" target="_blank" rel="noopener noreferrer">ollama.ai</a> to learn more.
+        </Paragraph>
+      </Space>
     </Modal>
   );
 };

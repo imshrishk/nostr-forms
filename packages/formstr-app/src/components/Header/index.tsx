@@ -5,7 +5,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useMediaQuery } from 'react-responsive';
 import styled from 'styled-components';
 import type { MenuProps } from 'antd';
-import { TemplateSelectionModal } from "../TemplateSelectionModal";
+import { TemplateSelectionModal } from "../TemplateSelectorModal";
 import FAQModal from '../FAQModal';
 import OllamaSettingsModal from '../OllamaSettingsModal';
 import { useProfile } from '../../provider/ProfileProvider';

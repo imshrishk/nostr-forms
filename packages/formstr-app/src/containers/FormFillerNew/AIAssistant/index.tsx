@@ -1,265 +1,206 @@
+// packages/formstr-app/src/containers/FormFillerNew/AIAssistant/index.tsx
 import React, { useState, useEffect } from 'react';
-import { Button, Spin, Alert, Tooltip, Typography, Drawer, Input, Space } from 'antd';
-import { RobotOutlined, SendOutlined, CloseOutlined } from '@ant-design/icons';
-import styled from 'styled-components';
+import { Button, Modal, Input, Typography, Spin, Alert, Card, Space } from 'antd';
+import { RobotOutlined, BulbOutlined, SettingOutlined } from '@ant-design/icons';
 import { useOllama } from '../../../providers/OllamaProvider';
+import OllamaSettingsModal from '../../../components/OllamaSettingsModal';
+import styled from 'styled-components';
 
-const { Text, Title, Paragraph } = Typography;
 const { TextArea } = Input;
+const { Title, Paragraph, Text } = Typography;
 
-const AIButton = styled(Button)`
+const AssistantButton = styled(Button)`
   position: fixed;
-  bottom: 20px;
-  right: 20px;
-  width: 50px;
-  height: 50px;
-  border-radius: 25px;
+  bottom: 24px;
+  right: 24px;
+  height: 48px;
+  width: 48px;
+  border-radius: 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   z-index: 1000;
-
-  .anticon {
-    font-size: 24px;
-  }
 `;
 
 interface AIAssistantProps {
   formTitle: string;
   formDescription?: string;
-  questions: Array<{
-    id: string;
-    text: string;
-    type: string; 
-    options?: Array<{ label: string; value: string }>;
-  }>;
-  onSuggestAnswer: (questionId: string, answer: string | string[]) => void;
+  currentQuestion?: string;
+  questionType?: string;
+  onSuggestion?: (suggestion: string) => void;
 }
 
-const AIAssistant: React.FC<AIAssistantProps> = ({ 
-  formTitle, 
-  formDescription, 
-  questions,
-  onSuggestAnswer
+const AIAssistant: React.FC<AIAssistantProps> = ({
+  formTitle,
+  formDescription,
+  currentQuestion,
+  questionType,
+  onSuggestion,
 }) => {
-  const { ollamaService, isConnected } = useOllama();
-  const [drawerVisible, setDrawerVisible] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [customPrompt, setCustomPrompt] = useState('');
-  const [suggestedAnswers, setSuggestedAnswers] = useState<Record<string, string | string[]>>({});
-
-  const toggleDrawer = () => {
-    setDrawerVisible(!drawerVisible);
+  const { isConfigured, generateText, isLoading } = useOllama();
+  const [isOpen, setIsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [userContext, setUserContext] = useState('');
+  const [suggestion, setSuggestion] = useState('');
+  const [generating, setGenerating] = useState(false);
+  
+  const openAssistant = () => {
+    setIsOpen(true);
   };
-
-  const formatFormContent = () => {
-    let content = `Form Title: ${formTitle}\n`;
-    
-    if (formDescription) {
-      content += `Form Description: ${formDescription}\n\n`;
-    }
-    
-    content += "Questions:\n";
-    questions.forEach((q, index) => {
-      content += `${index + 1}. ${q.text} (${q.type})`;
-      if (q.options) {
-        content += ` Options: ${q.options.map(o => o.label).join(', ')}`;
-      }
-      content += '\n';
-    });
-    
-    return content;
+  
+  const closeAssistant = () => {
+    setIsOpen(false);
   };
-
-  const generateAnswers = async () => {
-    if (!isConnected) {
-      setError('Ollama is not connected. Please connect to your Ollama instance first.');
-      return;
-    }
+  
+  const generateSuggestion = async () => {
+    if (!currentQuestion) return;
     
-    setLoading(true);
-    setError(null);
+    setGenerating(true);
+    
+    const prompt = `You are an AI assistant helping someone fill out a form. Based on the information provided, suggest an appropriate response to the current question.
+    
+    Form Title: "${formTitle}"
+    Form Description: "${formDescription || 'Not provided'}"
+    Current Question: "${currentQuestion}"
+    Question Type: "${questionType || 'text'}"
+    User Context: "${userContext}"
+    
+    Provide a concise, appropriate response to this question based on the context. 
+    If the question is subjective or you don't have enough information, make a reasonable suggestion that the user can modify.
+    
+    Response:`;
     
     try {
-      const formContent = formatFormContent();
-      
-      const prompt = customPrompt.trim() 
-        ? `${customPrompt}\n\nHere is the form to fill out:\n${formContent}`
-        : `Please help me fill out this form with reasonable and realistic answers:\n${formContent}`;
-      
-      // Create system prompt for form filling
-      const messages = [
-        {
-          role: 'system' as const,
-          content: `You are an AI assistant helping to fill out a form. 
-          Generate appropriate answers for each question based on the form context.
-          Format your response as JSON where keys are question numbers (1, 2, 3...) and values are the answers:
-          {
-            "1": "Answer to question 1",
-            "2": "Answer to question 2",
-            "3": ["Selected option 1", "Selected option 3"]
-          }
-          
-          For multiple choice questions, return an array of selected options.
-          Make answers realistic, appropriate and contextual to the form's purpose.`
-        },
-        {
-          role: 'user' as const,
-          content: prompt
-        }
-      ];
-      
-      const response = await ollamaService.chat({
-        messages: messages,
-        temperature: 0.7
-      });
-      
-      // Extract JSON from response
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error('Failed to parse response as JSON');
-      }
-      
-      const jsonResponse = JSON.parse(jsonMatch[0]);
-      
-      // Process answers and map them to question IDs
-      const mappedAnswers: Record<string, string | string[]> = {};
-      
-      Object.keys(jsonResponse).forEach(questionNum => {
-        const index = parseInt(questionNum) - 1;
-        if (index >= 0 && index < questions.length) {
-          const questionId = questions[index].id;
-          mappedAnswers[questionId] = jsonResponse[questionNum];
-        }
-      });
-      
-      setSuggestedAnswers(mappedAnswers);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to generate answers');
+      const response = await generateText(prompt);
+      setSuggestion(response.trim());
+    } catch (error) {
+      console.error('Failed to generate suggestion:', error);
     } finally {
-      setLoading(false);
+      setGenerating(false);
     }
   };
-
-  const handleApplyAnswer = (questionId: string) => {
-    const answer = suggestedAnswers[questionId];
-    if (answer !== undefined) {
-      onSuggestAnswer(questionId, answer);
+  
+  const applySuggestion = () => {
+    if (onSuggestion && suggestion) {
+      onSuggestion(suggestion);
+      closeAssistant();
     }
   };
-
-  const handleApplyAll = () => {
-    Object.keys(suggestedAnswers).forEach(questionId => {
-      onSuggestAnswer(questionId, suggestedAnswers[questionId]);
-    });
-    setDrawerVisible(false);
-  };
-
+  
+  useEffect(() => {
+    // Clear suggestion when modal is opened
+    if (isOpen) {
+      setSuggestion('');
+    }
+  }, [isOpen]);
+  
   return (
     <>
-      <AIButton 
-        type="primary" 
-        icon={<RobotOutlined />} 
-        onClick={toggleDrawer}
-        title="AI Form Assistant"
+      <AssistantButton
+        type="primary"
+        icon={<RobotOutlined />}
+        onClick={openAssistant}
+        title="AI Assist"
       />
       
-      <Drawer
+      <Modal
         title={
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <RobotOutlined style={{ fontSize: '18px', marginRight: '8px' }} />
+          <Space align="center">
+            <RobotOutlined />
             <span>AI Form Assistant</span>
-          </div>
+          </Space>
         }
-        open={drawerVisible}
-        onClose={toggleDrawer}
-        width={450}
+        open={isOpen}
+        onCancel={closeAssistant}
+        footer={null}
+        width={600}
       >
-        <Space direction="vertical" style={{ width: '100%' }}>
-          {!isConnected && (
+        {!isConfigured ? (
+          <Space direction="vertical" style={{ width: '100%' }}>
             <Alert
-              message="Ollama Not Connected"
-              description="Please connect to your Ollama instance in the settings to use AI features."
+              message="Ollama Not Configured"
+              description="You need to configure your Ollama connection to use the AI assistant."
               type="warning"
               showIcon
-              style={{ marginBottom: 16 }}
             />
-          )}
-          
-          <Paragraph>
-            The AI assistant can help you fill out this form with realistic answers.
-          </Paragraph>
-          
-          <div style={{ marginBottom: 16 }}>
-            <Text strong>Customize your request (optional):</Text>
-            <TextArea
-              placeholder="E.g., Fill this form as a customer who had a great experience"
-              value={customPrompt}
-              onChange={e => setCustomPrompt(e.target.value)}
-              rows={3}
-              style={{ marginTop: 8 }}
-            />
-          </div>
-          
-          <Button 
-            type="primary" 
-            onClick={generateAnswers} 
-            loading={loading}
-            disabled={!isConnected}
-            icon={<SendOutlined />}
-            style={{ marginBottom: 16 }}
-          >
-            Generate Answers
-          </Button>
-          
-          {error && <Alert message={error} type="error" showIcon style={{ marginBottom: 16 }} />}
-          
-          {loading && (
-            <div style={{ textAlign: 'center', padding: '20px 0' }}>
-              <Spin tip="Generating answers..." />
-            </div>
-          )}
-          
-          {!loading && Object.keys(suggestedAnswers).length > 0 && (
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                <Title level={5} style={{ margin: 0 }}>Suggested Answers</Title>
-                <Button type="primary" onClick={handleApplyAll}>
-                  Apply All
-                </Button>
-              </div>
-              
-              {questions.map((q, index) => {
-                const answer = suggestedAnswers[q.id];
-                if (answer === undefined) return null;
+            <Button 
+              type="primary" 
+              icon={<SettingOutlined />}
+              onClick={() => setSettingsOpen(true)}
+            >
+              Configure Ollama
+            </Button>
+          </Space>
+        ) : (
+          <Space direction="vertical" style={{ width: '100%' }}>
+            {currentQuestion ? (
+              <>
+                <Card title="Current Question" size="small">
+                  <Paragraph>{currentQuestion}</Paragraph>
+                </Card>
                 
-                return (
-                  <div key={q.id} style={{ marginBottom: 16, padding: 12, border: '1px solid #f0f0f0', borderRadius: 8 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div>
-                        <Text strong>{index + 1}. {q.text}</Text>
-                        <Paragraph style={{ margin: '8px 0' }}>
-                          {Array.isArray(answer) 
-                            ? answer.join(', ')
-                            : answer}
-                        </Paragraph>
-                      </div>
-                      <Button 
-                        type="link" 
-                        onClick={() => handleApplyAnswer(q.id)}
-                      >
-                        Apply
-                      </Button>
-                    </div>
+                <Title level={5}>Provide some context</Title>
+                <Paragraph>
+                  Tell the AI about yourself or provide relevant information to help it generate a better response.
+                </Paragraph>
+                
+                <TextArea
+                  placeholder="e.g., I'm a software developer with 5 years of experience..."
+                  rows={4}
+                  value={userContext}
+                  onChange={(e) => setUserContext(e.target.value)}
+                  style={{ marginBottom: 16 }}
+                />
+                
+                <Button
+                  type="primary"
+                  icon={<BulbOutlined />}
+                  onClick={generateSuggestion}
+                  loading={generating}
+                  block
+                >
+                  Generate Suggestion
+                </Button>
+                
+                {generating && (
+                  <div style={{ textAlign: 'center', margin: '16px 0' }}>
+                    <Spin />
+                    <Text>Thinking...</Text>
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </Space>
-      </Drawer>
+                )}
+                
+                {suggestion && (
+                  <Card 
+                    title="AI Suggestion" 
+                    size="small"
+                    style={{ marginTop: 16 }}
+                    extra={
+                      <Button type="primary" size="small" onClick={applySuggestion}>
+                        Use This
+                      </Button>
+                    }
+                  >
+                    <Paragraph>{suggestion}</Paragraph>
+                  </Card>
+                )}
+              </>
+            ) : (
+              <Alert
+                message="No Active Question"
+                description="Please focus on a field in the form to get AI assistance."
+                type="info"
+                showIcon
+              />
+            )}
+          </Space>
+        )}
+      </Modal>
+      
+      <OllamaSettingsModal
+        visible={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+      />
     </>
   );
 };

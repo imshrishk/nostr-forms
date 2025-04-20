@@ -1,44 +1,46 @@
-import React, { createContext, useState, useContext, ReactNode } from 'react';
-import OllamaService from '../services/ollama';
+// packages/formstr-app/src/providers/OllamaProvider.tsx
+import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
+import { message } from 'antd';
+import { ollamaService } from '../services/ollama';
 import { getItem, setItem, LOCAL_STORAGE_KEYS } from '../utils/localStorage';
-import axios from 'axios';
 
-// Add Ollama settings to localStorage keys
-if (!LOCAL_STORAGE_KEYS.OLLAMA_SETTINGS) {
-  LOCAL_STORAGE_KEYS.OLLAMA_SETTINGS = 'formstr-ollama-settings';
-}
-
-interface OllamaContextType {
-  ollamaService: OllamaService;
-  isConnected: boolean;
-  isLoading: boolean;
-  error: string | null;
-  models: string[];
-  selectedModel: string;
-  baseUrl: string;
-  connect: (baseUrl: string) => Promise<void>;
-  disconnect: () => void;
-  setSelectedModel: (model: string) => void;
-  testConnection: () => Promise<boolean>;
-  fetchModels: () => Promise<string[]>;
-}
-
-const defaultOllamaContext: OllamaContextType = {
-  ollamaService: new OllamaService(),
-  isConnected: false,
-  isLoading: false,
-  error: null,
-  models: [],
-  selectedModel: 'llama2',
-  baseUrl: 'http://localhost:11434',
-  connect: async () => {},
-  disconnect: () => {},
-  setSelectedModel: () => {},
-  testConnection: async () => false,
-  fetchModels: async () => [],
+// Update localStorage.ts to include these keys
+// packages/formstr-app/src/utils/localStorage.ts
+export const LOCAL_STORAGE_KEYS = {
+  // ... existing keys
+  OLLAMA_BASE_URL: 'ollama_base_url',
+  OLLAMA_MODEL: 'ollama_model',
 };
 
-export const OllamaContext = createContext<OllamaContextType>(defaultOllamaContext);
+interface OllamaContextType {
+  baseUrl: string;
+  setBaseUrl: (url: string) => void;
+  model: string;
+  setModel: (model: string) => void;
+  availableModels: string[];
+  fetchModels: (baseUrl?: string) => Promise<void>;
+  generateText: (prompt: string) => Promise<string>;
+  testConnection: (baseUrl?: string) => Promise<boolean>;
+  connectionStatus: 'idle' | 'success' | 'error';
+  isLoading: boolean;
+  isConfigured: boolean;
+}
+
+const defaultContext: OllamaContextType = {
+  baseUrl: 'http://localhost:11434',
+  setBaseUrl: () => {},
+  model: '',
+  setModel: () => {},
+  availableModels: [],
+  fetchModels: async () => {},
+  generateText: async () => '',
+  testConnection: async () => false,
+  connectionStatus: 'idle',
+  isLoading: false,
+  isConfigured: false,
+};
+
+const OllamaContext = createContext<OllamaContextType>(defaultContext);
 
 export const useOllama = () => useContext(OllamaContext);
 
@@ -47,109 +49,104 @@ interface OllamaProviderProps {
 }
 
 export const OllamaProvider: React.FC<OllamaProviderProps> = ({ children }) => {
-  const savedSettings = getItem(LOCAL_STORAGE_KEYS.OLLAMA_SETTINGS) || {};
-  
-  const [ollamaService] = useState(new OllamaService({
-    baseUrl: savedSettings.baseUrl || 'http://localhost:11434',
-    model: savedSettings.selectedModel || 'llama2',
-  }));
-  
-  const [isConnected, setIsConnected] = useState<boolean>(!!savedSettings.isConnected);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
-  const [models, setModels] = useState<string[]>(savedSettings.models || []);
-  const [selectedModel, setSelectedModel] = useState<string>(savedSettings.selectedModel || 'llama2');
-  const [baseUrl, setBaseUrl] = useState<string>(savedSettings.baseUrl || 'http://localhost:11434');
+  const [baseUrl, setBaseUrl] = useState<string>(
+    getItem(LOCAL_STORAGE_KEYS.OLLAMA_BASE_URL) || 'http://localhost:11434'
+  );
+  const [model, setModel] = useState<string>(
+    getItem(LOCAL_STORAGE_KEYS.OLLAMA_MODEL) || ''
+  );
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
+  const [connectionStatus, setConnectionStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const saveSettings = () => {
-    setItem(LOCAL_STORAGE_KEYS.OLLAMA_SETTINGS, {
-      isConnected,
-      models,
-      selectedModel,
-      baseUrl,
-    });
-  };
-
-  const connect = async (url: string) => {
+  const fetchModels = async (url?: string) => {
+    const serverUrl = url || baseUrl;
     setIsLoading(true);
-    setError(null);
-    
     try {
-      setBaseUrl(url);
-      ollamaService.setBaseUrl(url);
-      
-      const connected = await testConnection();
-      
-      if (connected) {
-        setIsConnected(true);
-        const modelList = await fetchModels();
-        if (modelList.length > 0 && !modelList.includes(selectedModel)) {
-          setSelectedModel(modelList[0]);
-          ollamaService.setModel(modelList[0]);
-        }
+      const models = await ollamaService.listModels(serverUrl);
+      setAvailableModels(models);
+      if (models.length > 0 && !model) {
+        setModel(models[0]);
       }
-      
-      saveSettings();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to connect to Ollama');
-      setIsConnected(false);
+      return models;
+    } catch (error) {
+      console.error('Failed to fetch Ollama models:', error);
+      message.error('Failed to fetch available models from Ollama');
+      setAvailableModels([]);
+      return [];
     } finally {
       setIsLoading(false);
     }
   };
 
-  const disconnect = () => {
-    setIsConnected(false);
-    saveSettings();
-  };
-
-  const updateSelectedModel = (model: string) => {
-    setSelectedModel(model);
-    ollamaService.setModel(model);
-    saveSettings();
-  };
-
-  const testConnection = async (): Promise<boolean> => {
+  const testConnection = async (url?: string) => {
+    const serverUrl = url || baseUrl;
+    setIsLoading(true);
+    setConnectionStatus('idle');
     try {
-      await axios.get(`${baseUrl}/api/version`);
+      await ollamaService.ping(serverUrl);
+      setConnectionStatus('success');
       return true;
-    } catch (err) {
-      setError('Failed to connect to Ollama. Make sure it\'s running and accessible.');
+    } catch (error) {
+      console.error('Failed to connect to Ollama:', error);
+      setConnectionStatus('error');
       return false;
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const fetchModels = async (): Promise<string[]> => {
+  const generateText = async (prompt: string): Promise<string> => {
+    if (!baseUrl || !model) {
+      message.error('Ollama is not properly configured');
+      return '';
+    }
+
+    setIsLoading(true);
     try {
-      const response = await axios.get(`${baseUrl}/api/tags`);
-      const modelList = response.data.models.map((model: any) => model.name);
-      setModels(modelList);
-      saveSettings();
-      return modelList;
-    } catch (err) {
-      setError('Failed to fetch models from Ollama');
-      return [];
+      const response = await ollamaService.generate(baseUrl, model, prompt);
+      return response;
+    } catch (error) {
+      console.error('Text generation failed:', error);
+      message.error('Failed to generate text with Ollama');
+      return '';
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  return (
-    <OllamaContext.Provider
-      value={{
-        ollamaService,
-        isConnected,
-        isLoading,
-        error,
-        models,
-        selectedModel,
-        baseUrl,
-        connect,
-        disconnect,
-        setSelectedModel: updateSelectedModel,
-        testConnection,
-        fetchModels,
-      }}
-    >
-      {children}
-    </OllamaContext.Provider>
-  );
+  // Update local storage when settings change
+  useEffect(() => {
+    setItem(LOCAL_STORAGE_KEYS.OLLAMA_BASE_URL, baseUrl);
+  }, [baseUrl]);
+
+  useEffect(() => {
+    setItem(LOCAL_STORAGE_KEYS.OLLAMA_MODEL, model);
+  }, [model]);
+
+  // Initial setup
+  useEffect(() => {
+    if (baseUrl) {
+      testConnection();
+      fetchModels();
+    }
+  }, []);
+
+  const isConfigured = !!baseUrl && !!model;
+
+  const value = {
+    baseUrl,
+    setBaseUrl,
+    model,
+    setModel,
+    availableModels,
+    fetchModels,
+    generateText,
+    testConnection,
+    connectionStatus,
+    isLoading,
+    isConfigured,
+  };
+
+  return <OllamaContext.Provider value={value}>{children}</OllamaContext.Provider>;
 };
