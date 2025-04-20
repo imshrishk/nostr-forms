@@ -1,49 +1,39 @@
 import React from 'react';
-import { Modal, Typography } from 'antd';
-import { availableTemplates, FormTemplate } from '../../templates'; 
-import TemplateCard from '../TemplateCard';
+import { Modal, Card, Row, Col, Button } from 'antd';
 
-interface TemplateSelectorModalProps {
-  visible: boolean;
-  onClose: () => void;
-  onTemplateSelect: (template: FormTemplate) => void;
-}
-
-const TemplateSelectorModal: React.FC<TemplateSelectorModalProps> = ({
-  visible,
-  onClose,
-  onTemplateSelect,
-}) => {
-
-  const handleCardClick = (template: FormTemplate) => {
-    onTemplateSelect(template);
-    onClose();
-  };
+export const TemplateSelectionModal = ({ visible, onCancel, onSelect }) => {
+  const templates = [
+    { id: 'blank', name: 'Blank Form', description: 'Start with a blank form' },
+    { id: 'contact', name: 'Contact Form', description: 'Basic contact information' },
+    { id: 'survey', name: 'Survey', description: 'Collect user feedback' }
+  ];
 
   return (
     <Modal
-      title={
-        <Typography.Title level={4} style={{ textAlign: 'center', margin: 0 }}>
-          Choose a Template
-        </Typography.Title>
-      }
+      title="Select a Template"
       open={visible}
-      onCancel={onClose}
+      onCancel={onCancel}
       footer={null}
-      width={600}
-      centered 
+      width={700}
     >
-      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', padding: '20px 0' }}>
-        {availableTemplates.map((template) => (
-          <TemplateCard
-            key={template.id}
-            template={template}
-            onClick={handleCardClick} 
-          />
+      <Row gutter={[16, 16]}>
+        <Col span={24}>
+          <Button type="primary" onClick={() => onSelect(null)}>
+            Blank Form
+          </Button>
+        </Col>
+        {templates.map(template => (
+          <Col span={8} key={template.id}>
+            <Card
+              hoverable
+              title={template.name}
+              onClick={() => onSelect(template.id)}
+            >
+              {template.description}
+            </Card>
+          </Col>
         ))}
-      </div>
+      </Row>
     </Modal>
   );
 };
-
-export default TemplateSelectorModal;

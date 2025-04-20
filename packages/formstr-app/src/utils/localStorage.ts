@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 
 export const LOCAL_STORAGE_KEYS = {
-  LOCAL_FORMS: "formstr:forms",
-  DRAFT_FORMS: "formstr:draftForms",
-  SUBMISSIONS: "formstr:submissions",
-  PROFILE: "formstr:profile",
+  LOCAL_FORMS: 'local-forms',
+  DRAFT_FORMS: 'draft-forms',
+  SUBMISSIONS: 'submissions',
+  PROFILE: 'profile',
+  OLLAMA_SETTINGS: 'formstr-ollama-settings'
 };
 
 export function getItem<T>(key: string, { parseAsJson = true } = {}): T | null {

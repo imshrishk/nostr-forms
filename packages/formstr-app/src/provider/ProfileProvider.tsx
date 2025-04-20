@@ -30,6 +30,8 @@ export const ProfileContext = createContext<ProfileContextType | undefined>(
 export const ProfileProvider: FC<ProfileProviderProps> = ({ children }) => {
   const [pubkey, setPubkey] = useState<string | undefined>(undefined);
   const [usingNip07, setUsingNip07] = useState(false);
+  const [profile, setProfile] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const profile = getItem<IProfile>(LOCAL_STORAGE_KEYS.PROFILE);
@@ -55,7 +57,7 @@ export const ProfileProvider: FC<ProfileProviderProps> = ({ children }) => {
   };
 
   return (
-    <ProfileContext.Provider value={{ pubkey, requestPubkey, logout }}>
+    <ProfileContext.Provider value={{ pubkey, requestPubkey, logout, profile, isLoading, setProfile }}>
       {children}
       <Modal
         open={usingNip07}

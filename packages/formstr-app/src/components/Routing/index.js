@@ -85,3 +85,4 @@ function Routing() {
 }
 
 export default Routing;
+export { default as NostrHeader } from './index';
