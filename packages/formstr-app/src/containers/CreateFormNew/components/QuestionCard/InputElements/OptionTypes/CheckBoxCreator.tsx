@@ -25,8 +25,19 @@ export const CheckboxCreator: React.FC<CheckboxCreatorProps> = ({
   return (
     <OptionsStyle>
       {choices?.map((choice) => {
-        let [choiceId, label, settingsString] = choice;
-        let settings = JSON.parse(settingsString || "{}") as ChoiceSettings;
+        let choiceId = choice[0];
+        let label = choice[1];
+        let settingsString = choice[2];
+        let settings: ChoiceSettings = {}; // Default settings
+
+        try {
+           // Safely parse settings string
+          settings = JSON.parse(settingsString || "{}") as ChoiceSettings;
+        } catch (e) {
+          console.error("Error parsing choice settings:", e, " Raw settings:", settingsString);
+           // Keep settings as {} if parsing fails
+        }
+
         return (
           <div className="radioButtonItem" key={choiceId}>
             <Checkbox disabled key={choiceId + "checkbox"} />
@@ -43,7 +54,7 @@ export const CheckboxCreator: React.FC<CheckboxCreatorProps> = ({
               }}
               placeholder="Enter an option"
               className="choice-input"
-              disabled={settings.isOther}
+              disabled={settings.isOther} // Use safely parsed settings
             />
             {choices.length >= 2 && (
               <CloseOutlined

@@ -13,6 +13,7 @@ interface InputFillerProps {
   options: Option[];
   onChange: (answer: string, message?: string) => void;
   defaultValue?: string | number | boolean;
+  disabled?: boolean;
 }
 
 export const InputFiller: React.FC<InputFillerProps> = ({
@@ -20,6 +21,7 @@ export const InputFiller: React.FC<InputFillerProps> = ({
   options,
   onChange,
   defaultValue,
+  disabled,
 }) => {
   const handleInputChange = (
     e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -43,6 +45,7 @@ export const InputFiller: React.FC<InputFillerProps> = ({
           defaultValue={defaultValue as string}
           onChange={handleInputChange}
           placeholder="Please enter your response"
+          disabled={disabled}
         />
       ),
       [AnswerTypes.paragraph]: (
@@ -50,6 +53,7 @@ export const InputFiller: React.FC<InputFillerProps> = ({
           defaultValue={defaultValue as string}
           onChange={handleInputChange}
           placeholder="Please enter your response"
+          disabled={disabled}
         />
       ),
       [AnswerTypes.number]: (
@@ -58,6 +62,7 @@ export const InputFiller: React.FC<InputFillerProps> = ({
           onChange={handleValueChange}
           style={{ width: "100%" }}
           placeholder="Please enter your response"
+          disabled={disabled}
         />
       ),
       [AnswerTypes.radioButton]: (
@@ -66,6 +71,7 @@ export const InputFiller: React.FC<InputFillerProps> = ({
           options={options}
           defaultValue={defaultValue as string}
           onChange={handleValueChange}
+          disabled={disabled}
         />
       ),
       [AnswerTypes.checkboxes]: (
@@ -74,6 +80,7 @@ export const InputFiller: React.FC<InputFillerProps> = ({
           answerType={answerType as AnswerTypes.checkboxes}
           options={options}
           onChange={handleValueChange}
+          disabled={disabled}
         />
       ),
       [AnswerTypes.dropdown]: (
@@ -81,18 +88,21 @@ export const InputFiller: React.FC<InputFillerProps> = ({
           defaultValue={defaultValue as string}
           options={options}
           onChange={handleValueChange}
+          disabled={disabled}
         />
       ),
       [AnswerTypes.date]: (
         <DateFiller
           defaultValue={defaultValue as string}
           onChange={handleValueChange}
+          disabled={disabled}
         />
       ),
       [AnswerTypes.time]: (
         <TimeFiller
           defaultValue={defaultValue as string}
           onChange={handleValueChange}
+          disabled={disabled}
         />
       ),
     };

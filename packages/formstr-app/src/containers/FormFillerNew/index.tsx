@@ -39,18 +39,19 @@ export const FormFiller: React.FC<FormFillerProps> = ({
   embedded,
 }) => {
   const { naddr } = useParams();
-  let isPreview = !!formSpec;
+  const [formTemplate, setFormTemplate] = useState<Tag[] | null>(formSpec || null);
+  const isPreview = !!formSpec;
+  
   if (!isPreview && !naddr)
     return <Text> Not enough data to render this url </Text>;
+    
   let decodedData;
   if (!isPreview) decodedData = nip19.decode(naddr!).data as AddressPointer;
   let pubKey = decodedData?.pubkey;
   let formId = decodedData?.identifier;
   let relays = decodedData?.relays;
+  
   const { pubkey: userPubKey, requestPubkey } = useProfileContext();
-  const [formTemplate, setFormTemplate] = useState<Tag[] | null>(
-    formSpec || null
-  );
   const [form] = Form.useForm();
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [noAccess, setNoAccess] = useState<boolean>(false);
@@ -62,10 +63,27 @@ export const FormFiller: React.FC<FormFillerProps> = ({
   const viewKeyParams = searchParams.get("viewKey");
   const hideDescription = searchParams.get("hideDescription") === "true";
   const navigate = useNavigate();
+  const [isFormReady, setIsFormReady] = useState(isPreview); // Form is immediately ready in preview mode
 
-  if (!formId && !formSpec) {
-    return null;
-  }
+  // Add debug logging
+  useEffect(() => {
+    if (isPreview) {
+      console.log("Preview mode active with form spec:", formSpec);
+      // In preview mode, we already have the template, so form is ready
+      setIsFormReady(true);
+      // Make sure formTemplate is set from props
+      if (formSpec && (!formTemplate || formTemplate !== formSpec)) {
+        setFormTemplate(formSpec);
+      }
+    }
+  }, [isPreview, formSpec]);
+
+  useEffect(() => {
+    // Clear form fields when formTemplate changes
+    if (formTemplate) {
+      form.resetFields();
+    }
+  }, [formTemplate, form]);
 
   const onKeysFetched = (keys: Tag[] | null) => {
     let editKey = keys?.find((k) => k[0] === "EditAccess")?.[1] || null;
@@ -77,28 +95,52 @@ export const FormFiller: React.FC<FormFillerProps> = ({
     formId: string,
     relays?: string[]
   ) => {
+    setIsFormReady(false); // Form is loading
     if (!formEvent) {
-      const form = await fetchFormTemplate(formAuthor, formId, relays);
-      if (!form) return;
-      setFormEvent(form);
-      setAllowedUsers(getAllowedUsers(form));
-      const formSpec = await getFormSpec(
-        form,
-        userPubKey,
-        onKeysFetched,
-        viewKeyParams
-      );
-      if (!formSpec) setNoAccess(true);
-      setFormTemplate(formSpec);
+      try {
+        console.log(`Fetching form template for ${formAuthor}:${formId}`);
+        const form = await fetchFormTemplate(formAuthor, formId, relays);
+        if (!form) {
+          console.error("Failed to fetch form template");
+          return;
+        }
+        setFormEvent(form);
+        setAllowedUsers(getAllowedUsers(form));
+        const formSpec = await getFormSpec(
+          form,
+          userPubKey,
+          onKeysFetched,
+          viewKeyParams
+        );
+        if (!formSpec) {
+          console.warn("No access to form");
+          setNoAccess(true);
+        } else {
+          console.log("Form spec loaded successfully:", formSpec);
+          setFormTemplate(formSpec);
+          setIsFormReady(true); // Form is ready to be displayed
+        }
+      } catch (error) {
+        console.error("Error initializing form:", error);
+      }
     }
   };
 
   useEffect(() => {
-    if (!(pubKey && formId)) {
-      return;
+    // Skip initialization in preview mode
+    if (isPreview) return;
+    
+    if (pubKey && formId) {
+      initialize(pubKey, formId, relays);
     }
-    initialize(pubKey, formId, relays);
-  }, [formEvent, formTemplate, userPubKey]);
+  }, [pubKey, formId, relays, userPubKey, viewKeyParams, isPreview]);
+
+  // Cleanup and reset when unmounting
+  useEffect(() => {
+    return () => {
+      form.resetFields();
+    };
+  }, [form]);
 
   const handleInput = (
     questionId: string,
@@ -174,7 +216,8 @@ export const FormFiller: React.FC<FormFillerProps> = ({
   if ((!pubKey || !formId) && !isPreview) {
     return <Text>INVALID FORM URL</Text>;
   }
-  if (!formEvent && !isPreview) {
+  
+  if (!isFormReady && !isPreview) {
     return (
       <div
         style={{
@@ -205,116 +248,108 @@ export const FormFiller: React.FC<FormFillerProps> = ({
         </Text>
       </div>
     );
-  } else if (
-    !isPreview &&
-    formEvent?.content !== "" &&
-    !userPubKey &&
-    !viewKeyParams
-  ) {
-    return (
-      <>
-        <Text>
-          This form is access controlled and requires login to continue
-        </Text>
-        <Button
-          onClick={() => {
-            requestPubkey();
-          }}
-        >
-          Login
-        </Button>
-      </>
-    );
   }
-  if (noAccess) {
-    return (
-      <>
-        <Text>Your profile does not have access to view this form</Text>
-        <RequestAccess pubkey={pubKey!} formId={formId!} />
-      </>
-    );
-  }
+  
   let name: string, settings: IFormSettings, fields: Field[];
   if (formTemplate) {
-    name = formTemplate.find((tag) => tag[0] === "name")?.[1] || "";
-    settings = JSON.parse(
-      formTemplate.find((tag) => tag[0] === "settings")?.[1] || "{}"
-    ) as IFormSettings;
-    fields = formTemplate.filter((tag) => tag[0] === "field") as Field[];
+    try {
+      name = formTemplate.find((tag) => tag[0] === "name")?.[1] || "";
+      settings = JSON.parse(
+        formTemplate.find((tag) => tag[0] === "settings")?.[1] || "{}"
+      ) as IFormSettings;
+      fields = formTemplate.filter((tag) => tag[0] === "field") as Field[];
 
-    return (
-      <FillerStyle $isPreview={isPreview}>
-        <div className="filler-container">
-          <div className="form-filler">
-            {!hideTitleImage && (
-              <FormTitle
-                className="form-title"
-                edit={false}
-                imageUrl={settings?.titleImageUrl}
-                formTitle={name}
-              />
-            )}
-            {!hideDescription && (
-              <div className="form-description">
-                <Text>
-                  <Markdown>{settings?.description}</Markdown>
-                </Text>
-              </div>
-            )}
+      console.log(`Rendering form with ${fields.length} fields, isPreview=${isPreview}`);
+      
+      return (
+        <FillerStyle $isPreview={isPreview}>
+          <div className="filler-container">
+            <div className="form-filler">
+              {!hideTitleImage && (
+                <FormTitle
+                  className="form-title"
+                  edit={false}
+                  imageUrl={settings?.titleImageUrl}
+                  formTitle={name}
+                />
+              )}
+              {!hideDescription && settings?.description && (
+                <div className="form-description">
+                  <Text>
+                    <Markdown>{settings?.description}</Markdown>
+                  </Text>
+                </div>
+              )}
 
-            <Form
-              form={form}
-              onFinish={() => {}}
-              className={
-                hideDescription ? "hidden-description" : "with-description"
-              }
-            >
-              <div>
-                <FormFields fields={fields} handleInput={handleInput} />
-                <>{renderSubmitButton(settings)}</>
-              </div>
-            </Form>
-            
-            {!isPreview && fields.length > 0 && (
-              <AIFormFiller 
-                fields={fields} 
-                onResponsesGenerated={handleAIResponsesGenerated} 
-              />
-            )}
-          </div>
-          <div className="branding-container">
-            <Link to="/">
-              <CreatedUsingFormstr />
-            </Link>
-            {!isMobile() && (
-              <a
-                href="https://github.com/abhay-raizada/nostr-forms"
-                className="foss-link"
+              <Form
+                form={form}
+                onFinish={() => {}}
+                className={
+                  hideDescription ? "hidden-description" : "with-description"
+                }
               >
-                <Text className="text-style">
-                  Formstr is free and Open Source
-                </Text>
-              </a>
-            )}
-          </div>
-        </div>
-        {embedded ? (
-          formSubmitted && (
-            <div className="embed-submitted">
-              <Text>Response Submitted</Text>
+                <div>
+                  {fields && fields.length > 0 ? (
+                    <FormFields
+                      fields={fields}
+                      handleInput={handleInput}
+                      form={form}
+                      embedMode={embedded}
+                      disabled={false} // Allow form fields to be interactive in preview
+                    />
+                  ) : (
+                    <div style={{ padding: '20px', textAlign: 'center' }}>
+                      <Text type="secondary">No form fields found to display</Text>
+                    </div>
+                  )}
+                  <>{renderSubmitButton(settings)}</>
+                </div>
+              </Form>
+
+              {!isPreview && fields && fields.length > 0 && (
+                <AIFormFiller
+                  fields={fields}
+                  onResponsesGenerated={handleAIResponsesGenerated}
+                />
+              )}
             </div>
-          )
-        ) : (
-          <ThankYouScreen
-            isOpen={formSubmitted}
-            onClose={() => {
-              let navigationUrl = editKey ? `/r/${pubKey}/${formId}` : `/`;
-              navigate(navigationUrl);
-            }}
-          />
-        )}
-      </FillerStyle>
-    );
+            <div className="branding-container">
+              <Link to="/">
+                <CreatedUsingFormstr />
+              </Link>
+              {!isMobile() && (
+                <a
+                  href="https://github.com/abhay-raizada/nostr-forms"
+                  className="foss-link"
+                >
+                  <Text className="text-style">
+                    Formstr is free and Open Source
+                  </Text>
+                </a>
+              )}
+            </div>
+          </div>
+          {embedded ? (
+            formSubmitted && (
+              <div className="embed-submitted">
+                <Text>Response Submitted</Text>
+              </div>
+            )
+          ) : (
+            <ThankYouScreen
+              isOpen={formSubmitted}
+              onClose={() => {
+                let navigationUrl = editKey ? `/r/${pubKey}/${formId}` : `/`;
+                navigate(navigationUrl);
+              }}
+            />
+          )}
+        </FillerStyle>
+      );
+    } catch (error) {
+      console.error("Error rendering form:", error);
+      return <Text>Error rendering form: {String(error)}</Text>;
+    }
   }
-  return null;
+  return <Text>No form template available</Text>;
 };

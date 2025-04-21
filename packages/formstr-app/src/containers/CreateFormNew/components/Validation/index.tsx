@@ -9,8 +9,10 @@ const { Text } = Typography;
 
 function Validation(props: IProps) {
   const { answerType, answerSettings, handleAnswerSettings } = props;
-  const validationRules = answerSettings.validationRules ?? {};
-  const defaultSelected = Object.keys(validationRules) as ValidationRuleTypes[];
+  const validationRules = answerSettings?.validationRules || {};
+  
+  const defaultSelected = validationRules ? 
+    Object.keys(validationRules).filter(k => k) as ValidationRuleTypes[] : [];
 
   const [selected, setSelected] =
     useState<ValidationRuleTypes[]>(defaultSelected);
@@ -20,23 +22,33 @@ function Validation(props: IProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [answerType]);
 
-  if (!selected.length && !ANSWER_TYPE_RULES_MENU[answerType].length)
+  const hasRules = answerType && 
+                   ANSWER_TYPE_RULES_MENU[answerType] && 
+                   ANSWER_TYPE_RULES_MENU[answerType]?.length > 0;
+  
+  if (!answerType || (!selected?.length && !hasRules)) {
     return null;
+  }
 
   const onRuleSelect = (val: any) => {
+    if (!val) return;
     const newSelected = [...selected, val];
     setSelected(newSelected);
   };
 
   const onSettingChange = (ruleType: ValidationRuleTypes, val: any) => {
+    if (!ruleType) return;
     handleAnswerSettings({
       validationRules: { ...validationRules, [ruleType]: val },
     });
   };
 
-  let rules = ANSWER_TYPE_RULES_MENU[answerType].filter(
-    (rule) => !selected.includes(rule.value)
-  );
+  let rules = [];
+  if (ANSWER_TYPE_RULES_MENU[answerType]) {
+    rules = ANSWER_TYPE_RULES_MENU[answerType].filter(
+      rule => rule && !selected.includes(rule.value)
+    );
+  }
 
   return (
     <StyleWrapper className="input-property">
@@ -44,12 +56,14 @@ function Validation(props: IProps) {
         <div>
           <Text className="property-title">Validation</Text>
         </div>
-        {!!rules.length && (
+        {Array.isArray(rules) && rules.length > 0 && (
           <Select value="Select" options={rules} onChange={onRuleSelect} />
         )}
       </div>
-      {!!selected.length &&
+      {Array.isArray(selected) && selected.length > 0 &&
         selected.map((ruleType) => {
+          if (!ruleType || !RULE_CONFIG[ruleType]) return null;
+          
           let { key, component: Component } = RULE_CONFIG[ruleType];
           return (
             <Component

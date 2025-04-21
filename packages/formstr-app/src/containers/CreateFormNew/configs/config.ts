@@ -4,6 +4,8 @@ import {
   MinRule,
   MaxRule,
   AnswerTypes,
+  RegexRule,
+  MatchRule,
 } from "@formstr/sdk/dist/interfaces";
 import { isGreaterThanOrEqual, isLessThanOrEqual, getNumValue } from "../utils";
 import RangeComponent from "../components/Validation/Range";
@@ -41,14 +43,14 @@ export const RULE_CONFIG = {
   [ValidationRuleTypes.regex]: {
     key: ValidationRuleTypes.regex,
     component: RegexComponent,
-    validator: (val: number | string, rule: MaxRule) => {
+    validator: (val: number | string, rule: RegexRule) => {
       return null;
     },
   },
   [ValidationRuleTypes.match]: {
     key: ValidationRuleTypes.match,
     component: MatchComponent,
-    validator: (val: number | string, rule: MaxRule) => {
+    validator: (val: number | string, rule: MatchRule) => {
       return null;
     },
   },

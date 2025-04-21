@@ -26,9 +26,20 @@ export const RadioButtonCreator: React.FC<RadioButtonCreatorProps> = ({
   return (
     <OptionsStyle>
       {choices?.map((choice) => {
-        console.log("Choice is", choice);
-        let [choiceId, label, settingsString] = choice;
-        let settings = JSON.parse(settingsString || "{}") as ChoiceSettings;
+        // console.log("Choice is", choice); // Keep console log commented out
+        let choiceId = choice[0];
+        let label = choice[1];
+        let settingsString = choice[2];
+        let settings: ChoiceSettings = {}; // Default settings
+
+        try {
+          // Safely parse settings string
+          settings = JSON.parse(settingsString || "{}") as ChoiceSettings;
+        } catch (e) {
+          console.error("Error parsing choice settings:", e, " Raw settings:", settingsString);
+          // Keep settings as {} if parsing fails
+        }
+
         return (
           <div className="radioButtonItem" key={choiceId}>
             <Radio disabled key={choiceId + "choice"} />
@@ -45,7 +56,7 @@ export const RadioButtonCreator: React.FC<RadioButtonCreatorProps> = ({
               }}
               placeholder="Enter an option"
               className="choice-input"
-              disabled={settings.isOther}
+              disabled={settings.isOther} // Use safely parsed settings
             />
             {choices.length >= 2 && (
               <CloseOutlined

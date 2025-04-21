@@ -1,16 +1,20 @@
 import { Field, Option } from "@formstr/sdk/dist/formstr/nip101";
 import { getValidationRules } from "../validations";
-import { Form } from "antd";
+import { Form, FormInstance } from "antd";
 import { QuestionNode } from "../QuestionNode/QuestionNode";
 
 interface FormFieldsProps {
   fields: Array<Field>;
   handleInput: (questionId: string, answer: string, message?: string) => void;
+  form: FormInstance<any>;
+  embedMode: boolean | undefined;
+  disabled?: boolean;
 }
 
 export const FormFields: React.FC<FormFieldsProps> = ({
   fields,
   handleInput,
+  disabled,
 }) => {
   return fields.map((field) => {
     let [_, fieldId, type, label, optionsString, config] = field;
@@ -32,6 +36,7 @@ export const FormFields: React.FC<FormFieldsProps> = ({
           fieldId={fieldId}
           options={options}
           inputHandler={handleInput}
+          disabled={disabled}
         />
       </Form.Item>
     );

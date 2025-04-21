@@ -69,7 +69,7 @@ function FormBuilder() {
         closable={true}
         onClose={() => setShowAIDrawer(false)}
         open={showAIDrawer}
-        width={450}
+        width={600}
       >
         <AIFormIntegration />
       </Drawer>

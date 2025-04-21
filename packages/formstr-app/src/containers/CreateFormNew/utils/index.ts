@@ -9,13 +9,44 @@ export const generateQuestion = (
   choices: string[][] = [],
   answerSettings: IAnswerSettings = { renderElement: AnswerTypes.shortText }
 ): Field => {
+  const tempId = makeTag(6);
+  const questionLabel = label || "Click here to edit";
+  const required = answerSettings.required || false;
+
+  // Determine the correct internal type based on primitive/answerSettings
+  let type = primitive; 
+  if (answerSettings.renderElement === AnswerTypes.paragraph) {
+    type = 'textbox';
+  } else if (answerSettings.renderElement === AnswerTypes.radioButton || answerSettings.renderElement === AnswerTypes.dropdown) {
+    type = 'singleselect';
+  } else if (answerSettings.renderElement === AnswerTypes.checkboxes) {
+    type = 'multiselect';
+  } else if (answerSettings.renderElement === AnswerTypes.date) {
+    type = 'date';
+  } else if (answerSettings.renderElement === AnswerTypes.time) {
+    type = 'time';
+  } else if (answerSettings.renderElement === AnswerTypes.number) {
+    type = 'number';
+  }
+
+  const fieldSettings = {
+    type: type, 
+    label: questionLabel,
+    required: required,
+    options: choices, // Store actual options array here
+    settings: { // Store specific settings under the 'settings' key
+      ...answerSettings,
+      required: required 
+    }
+  };
+
   return [
     "field",
-    makeTag(6),
-    primitive,
-    label || "Click here to edit",
-    JSON.stringify(choices) || "",
-    JSON.stringify(answerSettings),
+    tempId,
+    JSON.stringify(fieldSettings), // Store stringified settings object at index 2
+    questionLabel, // Store label at index 3
+    JSON.stringify(choices) || "[]", // Keep options string at index 4 (for potential legacy compatibility?)
+    JSON.stringify({ required: required }), // Store minimal settings at index 5 (for potential legacy compatibility?)
   ];
 };
 

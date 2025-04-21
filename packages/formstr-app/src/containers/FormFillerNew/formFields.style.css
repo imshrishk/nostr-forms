@@ -1,0 +1,73 @@
+/* Form Fields Styling */
+.formFields {
+  width: 100%;
+}
+
+.formFieldLabel {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 8px;
+  font-size: 16px;
+}
+
+.required-marker {
+  color: #ff4d4f;
+  margin-right: 4px;
+}
+
+/* Checkbox Group Styling */
+.checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.checkbox-item {
+  margin-bottom: 8px;
+}
+
+/* Improve form field spacing */
+.ant-form-item {
+  margin-bottom: 24px !important;
+}
+
+/* Add consistent styling for inputs */
+.ant-input,
+.ant-select-selector,
+.ant-picker {
+  border-radius: 4px !important;
+  min-height: 40px !important;
+}
+
+/* Improve textarea sizing */
+.ant-input-textarea textarea {
+  min-height: 80px !important;
+}
+
+/* Focus states */
+.ant-input:focus,
+.ant-select-focused .ant-select-selector,
+.ant-picker-focused {
+  border-color: #1890ff !important;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2) !important;
+}
+
+/* Error states */
+.ant-form-item-has-error .ant-input,
+.ant-form-item-has-error .ant-select-selector,
+.ant-form-item-has-error .ant-picker {
+  border-color: #ff4d4f !important;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .formFieldLabel {
+    font-size: 14px;
+  }
+  
+  .ant-input,
+  .ant-select-selector,
+  .ant-picker {
+    min-height: 36px !important;
+  }
+} 

@@ -23,10 +23,10 @@ import TemplateSelectorModal from "../../components/TemplateSelectorModal";
 import { createFormSpecFromTemplate } from "../../utils/formUtils";
 
 const MENU_OPTIONS = {
-  local: "On this device",
-  shared: "Shared with me",
-  myForms: "My forms",
-  drafts: "Drafts",
+  "local": "Local Forms",
+  "shared": "Shared Forms",
+  "myForms": "My Forms",
+  "drafts": "Drafts"
 };
 
 const defaultRelays = getDefaultRelays();
@@ -201,48 +201,42 @@ export const Dashboard = () => {
     return null;
   };
 
-  const menu = (
-    <Menu
-    style={{ textAlign: "center"}}>
-      <Menu.Item 
-        key="local" 
-        onClick={() => setFilter("local")}
-      >
-        {MENU_OPTIONS.local}
-      </Menu.Item>
-      <Menu.Item
-        key="shared"
-        onClick={() => setFilter("shared")}
-        disabled={!pubkey}
-      >
-        {MENU_OPTIONS.shared}
-      </Menu.Item>
-      <Menu.Item
-        key="myForms"
-        onClick={() => setFilter("myForms")}
-        disabled={!pubkey}
-      >
-        {MENU_OPTIONS.myForms}
-      </Menu.Item>
-      <Menu.Item key="drafts" 
-      onClick={() => setFilter("drafts")}
-      >
-        {MENU_OPTIONS.drafts}
-      </Menu.Item>
-    </Menu>
-  );
+  const menuItems = [
+    {
+      key: 'local',
+      label: MENU_OPTIONS.local
+    },
+    {
+      key: 'shared',
+      label: MENU_OPTIONS.shared,
+      disabled: !pubkey
+    },
+    {
+      key: 'myForms',
+      label: MENU_OPTIONS.myForms,
+      disabled: !pubkey
+    },
+    {
+      key: 'drafts',
+      label: MENU_OPTIONS.drafts
+    }
+  ];
+
+  const menuProps = {
+    items: menuItems,
+    onClick: ({ key }: { key: string }) => {
+      setFilter(key as "local" | "shared" | "myForms" | "drafts");
+    }
+  };
 
   return (
     <DashboardStyleWrapper>
       <div className="dashboard-container">
         <div className="filter-dropdown-container">
-          <Dropdown overlay={menu} trigger={["click"]} placement="bottomLeft" overlayClassName="dashboard-filter-menu"
->
+          <Dropdown menu={menuProps} trigger={["click"]} placement="bottomLeft">
             <Button>
               {MENU_OPTIONS[filter]}
-              <DownOutlined
-                style={{ marginLeft: "8px", fontSize: "12px" }}
-              />
+              <DownOutlined style={{ marginLeft: "8px", fontSize: "12px" }} />
             </Button>
           </Dropdown>
           

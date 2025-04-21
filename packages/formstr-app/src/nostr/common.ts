@@ -52,6 +52,45 @@ export const getDefaultRelays = () => {
   return defaultRelays;
 };
 
+// Make sure URL is valid and has proper format for WebSocket connections
+export const sanitizeRelayUrl = (url: string): string | null => {
+  if (!url || typeof url !== 'string') return null;
+  
+  // Trim whitespace
+  let sanitized = url.trim();
+  
+  // Ensure URL starts with wss:// or ws://
+  if (!sanitized.startsWith('wss://') && !sanitized.startsWith('ws://')) {
+    // Try to add protocol if missing
+    sanitized = 'wss://' + sanitized;
+  }
+  
+  try {
+    // Test if it's a valid URL format
+    const testUrl = new URL(sanitized);
+    if (testUrl.protocol !== 'ws:' && testUrl.protocol !== 'wss:') {
+      return null;
+    }
+    return sanitized;
+  } catch (e) {
+    // Invalid URL format
+    console.warn('Invalid relay URL:', url);
+    return null;
+  }
+};
+
+// Safe version of normalizeURL that handles errors
+export const safeNormalizeURL = (url: string): string | null => {
+  try {
+    const sanitized = sanitizeRelayUrl(url);
+    if (!sanitized) return null;
+    return normalizeURL(sanitized);
+  } catch (e) {
+    console.error('Error normalizing URL:', url, e);
+    return null;
+  }
+};
+
 function checkWindowNostr() {
   if (!window?.nostr) {
     throw Error("No method provided to access nostr");
@@ -88,17 +127,25 @@ export const customPublish = (
   event: Event,
   onAcceptedRelays?: (relay: string) => void
 ): Promise<string>[] => {
-  return relays.map(normalizeURL).map(async (url, i, arr) => {
-    if (arr.indexOf(url) !== i) {
-      return Promise.reject("duplicate url");
-    }
-
+  // Filter out invalid URLs
+  const validRelays = relays
+    .map(safeNormalizeURL)
+    .filter((url): url is string => url !== null);
+  
+  // Remove duplicates
+  const uniqueRelays = [...new Set(validRelays)];
+  
+  if (uniqueRelays.length === 0) {
+    console.warn('No valid relays found for publishing');
+    return [];
+  }
+  
+  return uniqueRelays.map(async (url) => {
     let relay: AbstractRelay | null = null;
     try {
       relay = await ensureRelay(url, { connectionTimeout: 5000 });
       return await Promise.race<string>([
         relay.publish(event).then((reason) => {
-          // console.log("accepted relays", url);
           onAcceptedRelays?.(url);
           return reason;
         }),
@@ -187,8 +234,12 @@ export const ensureRelay = async (
   url: string,
   params?: { connectionTimeout?: number }
 ): Promise<AbstractRelay> => {
-  url = normalizeURL(url);
-  let relay = new Relay(url);
+  const normalized = safeNormalizeURL(url);
+  if (!normalized) {
+    throw new Error(`Invalid relay URL: ${url}`);
+  }
+  
+  let relay = new Relay(normalized);
   if (params?.connectionTimeout)
     relay.connectionTimeout = params.connectionTimeout;
   await relay.connect();

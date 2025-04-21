@@ -15,7 +15,7 @@ function NumRange(rule: any): Rule;
 function NumRange(rule: RangeRule): Rule {
   return {
     validator: (_: any, value: any) => {
-      if (!value) return Promise.resolve();
+      if (!value || !Array.isArray(value) || value.length === 0) return Promise.resolve();
       if (!rule.min && !rule.max) return Promise.resolve();
       if (rule.min && value[0] < rule.min) {
         return Promise.reject(`Please enter number more than ${rule.min}`);
@@ -32,9 +32,10 @@ function MinLength(rule: any): Rule;
 function MinLength(rule: MinRule): Rule {
   return {
     validator: (_: any, value: any) => {
-      if (!value) return Promise.resolve();
+      if (!value || !Array.isArray(value) || value.length === 0) return Promise.resolve();
       if (!rule.min) return Promise.resolve();
-      if (value[0].length < rule.min) {
+      // Check that value[0] exists and is a string before accessing length
+      if (typeof value[0] !== 'string' || value[0].length < rule.min) {
         return Promise.reject(`Please enter more than ${rule.min} chars`);
       }
       return Promise.resolve();
@@ -46,9 +47,10 @@ function MaxLength(rule: any): Rule;
 function MaxLength(rule: MaxRule): Rule {
   return {
     validator: (_: any, value: any) => {
-      if (!value) return Promise.resolve();
+      if (!value || !Array.isArray(value) || value.length === 0) return Promise.resolve();
       if (!rule.max) return Promise.resolve();
-      if (value[0].length > rule.max) {
+      // Check that value[0] exists and is a string before accessing length
+      if (typeof value[0] !== 'string' || value[0].length > rule.max) {
         return Promise.reject(`Please enter less than ${rule.max} chars`);
       }
       return Promise.resolve();
@@ -60,9 +62,9 @@ function Regex(rule: any): Rule;
 function Regex(rule: RegexRule): Rule {
   return {
     validator: (_: any, value: any) => {
-      if (!value) return Promise.resolve();
+      if (!value || !Array.isArray(value) || value.length === 0) return Promise.resolve();
       if (!rule.pattern) return Promise.resolve();
-      if (!new RegExp(rule.pattern).test(value[0])) {
+      if (typeof value[0] !== 'string' || !new RegExp(rule.pattern).test(value[0])) {
         return Promise.reject(
           rule.errorMessage || `Did not match the pattern: ${rule.pattern}`
         );
@@ -76,7 +78,7 @@ function Match(rule: any): Rule;
 function Match(rule: MatchRule): Rule {
   return {
     validator: (_: any, value: any) => {
-      if (!value) return Promise.resolve();
+      if (!value || !Array.isArray(value) || value.length === 0) return Promise.resolve();
       if (!rule.answer) return Promise.resolve();
 
       const userValue = value[0];

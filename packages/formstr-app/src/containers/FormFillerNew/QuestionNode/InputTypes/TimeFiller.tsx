@@ -1,21 +1,28 @@
-import { TimePicker, TimePickerProps } from "antd";
+import { TimePicker } from "antd";
 import dayjs from "dayjs";
+import { Dayjs } from "dayjs";
 
 interface TimeFillerProps {
   onChange: (value: string) => void;
   defaultValue?: string;
+  disabled?: boolean;
 }
 
 export const TimeFiller: React.FC<TimeFillerProps> = ({
   onChange,
   defaultValue,
+  disabled,
 }) => {
-  const handleChange: TimePickerProps["onChange"] = (_, timeString) => {
+  const defaultTime = defaultValue ? dayjs(defaultValue, "HH:mm:ss") : undefined;
+  const onChangeHandler = (time: Dayjs | null, timeString: string) => {
     onChange(timeString);
   };
   return (
-    <>
-      <TimePicker onChange={handleChange} defaultValue={dayjs(defaultValue)} />
-    </>
+    <TimePicker
+      style={{ width: "100%" }}
+      defaultValue={defaultTime}
+      onChange={onChangeHandler}
+      disabled={disabled}
+    />
   );
 };

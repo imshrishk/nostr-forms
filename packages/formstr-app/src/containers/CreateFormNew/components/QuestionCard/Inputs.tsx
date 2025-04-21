@@ -21,50 +21,38 @@ const Inputs: React.FC<InputsProps> = ({
   answerSettingsHandler,
   optionsHandler,
 }) => {
-  const updateAnswerSettings = (settingKey: string, property: unknown) => {
-    let newAnswerSettings = { ...answerSettings, [settingKey]: property };
-    answerSettingsHandler(newAnswerSettings);
-  };
   const getInputElement = () => {
     switch (inputType) {
-      case AnswerTypes.shortText:
+      case 'text':
         return (
           <>
             <ShortText />
           </>
         );
-      case AnswerTypes.paragraph:
-        return <Input.TextArea disabled={true} />;
-      case AnswerTypes.number:
-        return <InputNumber disabled={true} />;
-      case AnswerTypes.radioButton:
+      case 'textbox':
+        return <Input.TextArea disabled={true} placeholder="User will type paragraph here" />;
+      case 'number':
+        return <InputNumber disabled={true} placeholder="User will type number here" style={{ width: '100%' }}/>;
+      case 'singleselect':
         return (
           <RadioButtonCreator
             initialValues={options}
             onValuesChange={optionsHandler}
           />
         );
-      case AnswerTypes.checkboxes:
+      case 'multiselect':
         return (
           <CheckboxCreator
             initialValues={options}
             onValuesChange={optionsHandler}
           />
         );
-      case AnswerTypes.dropdown:
-        return (
-          <DropdownCreator
-            initialValues={options}
-            onValuesChange={optionsHandler}
-          />
-        );
-      case AnswerTypes.date:
-        return <DatePicker disabled={true} />;
-      case AnswerTypes.time:
-        return <TimePicker disabled={true} />;
+      case 'date':
+        return <DatePicker disabled={true} style={{ width: '100%' }} />;
+      case 'time':
+        return <TimePicker disabled={true} style={{ width: '100%' }} />;
       default:
-        <></>;
-        break;
+        return <ShortText />;
     }
   };
   return <>{getInputElement()}</>;

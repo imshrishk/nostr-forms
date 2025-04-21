@@ -19,6 +19,7 @@ interface ChoiceFillerProps {
   options: Option[];
   onChange: (value: string, message: string) => void;
   defaultValue?: string;
+  disabled?: boolean;
 }
 
 export const ChoiceFiller: React.FC<ChoiceFillerProps> = ({
@@ -26,6 +27,7 @@ export const ChoiceFiller: React.FC<ChoiceFillerProps> = ({
   options,
   onChange,
   defaultValue,
+  disabled,
 }) => {
   const [otherMessage, setOtherMessage] = useState("");
   
@@ -67,6 +69,7 @@ export const ChoiceFiller: React.FC<ChoiceFillerProps> = ({
       <ElementConfig.Element.Group
         onChange={handleChoiceChange}
         defaultValue={ElementConfig.defaultValue}
+        disabled={disabled}
       >
         <Space direction="vertical">
           {options.map((choice) => {

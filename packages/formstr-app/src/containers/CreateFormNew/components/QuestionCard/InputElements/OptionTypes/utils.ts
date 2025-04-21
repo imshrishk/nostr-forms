@@ -37,7 +37,12 @@ export const handleLabelChange = (
 
 export const hasOtherOption = (choices: Array<Choice>) => {
   return choices.some((choice) => {
-    let settings = JSON.parse(choice[2] || "{}");
-    return settings.isOther;
+    try {
+      let settings = JSON.parse(choice[2] || "{}");
+      return settings.isOther;
+    } catch (e) {
+      console.error("Error parsing choice settings in hasOtherOption:", e, "Raw settings:", choice[2]);
+      return false;
+    }
   });
 };
